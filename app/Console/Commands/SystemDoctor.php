@@ -60,18 +60,28 @@ class SystemDoctor extends Command
             $this->check('installed.lock', file_exists(storage_path('installed.lock')), 'warning', storage_path('installed.lock')),
         ];
 
-        foreach (['bcmath', 'curl', 'fileinfo', 'gd', 'mbstring', 'openssl', 'pdo', 'pdo_mysql', 'tokenizer', 'xml'] as $extension) {
+        foreach (['bcmath', 'curl', 'fileinfo', 'gd', 'mbstring', 'openssl', 'pdo', 'tokenizer', 'xml'] as $extension) {
             $checks[] = $this->check(
                 "PHP extension: {$extension}",
                 extension_loaded($extension),
-                in_array($extension, ['pdo', 'pdo_mysql'], true) ? 'critical' : 'warning',
+                $extension === 'pdo' ? 'critical' : 'warning',
                 extension_loaded($extension) ? 'Loaded' : 'Missing'
             );
         }
 
+        $hasDbDriver = extension_loaded('pdo_pgsql') || extension_loaded('pdo_mysql');
+        $checks[] = $this->check(
+            'PHP extension: pdo_pgsql / pdo_mysql',
+            $hasDbDriver,
+            'critical',
+            $hasDbDriver ? 'Loaded' : 'Missing'
+        );
+
         try {
             DB::connection()->getPdo();
-            $checks[] = $this->check('Database connection', true, 'critical', config('database.connections.mysql.database'));
+            $defaultConn = config('database.default', 'pgsql');
+            $dbName = config("database.connections.{$defaultConn}.database") ?? DB::getDatabaseName();
+            $checks[] = $this->check('Database connection', true, 'critical', "{$defaultConn} ({$dbName})");
             $checks[] = $this->check('tenants table present', Schema::hasTable('tenants'), 'critical', Schema::hasTable('tenants') ? 'Found' : 'Missing');
             $checks[] = $this->check('users table present', Schema::hasTable('users'), 'critical', Schema::hasTable('users') ? 'Found' : 'Missing');
         } catch (\Throwable $e) {

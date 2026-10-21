@@ -13,9 +13,12 @@ return new class extends Migration
             $table->foreignId('deal_id')->nullable()->after('lead_id')->constrained('deals')->onDelete('cascade');
         });
 
-        if (DB::getDriverName() !== 'sqlite') {
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
             // Make lead_id nullable (activities can belong to a deal instead)
             DB::statement('ALTER TABLE activities MODIFY COLUMN lead_id BIGINT UNSIGNED NULL');
+        } elseif ($driver === 'pgsql') {
+            DB::statement('ALTER TABLE activities ALTER COLUMN lead_id DROP NOT NULL');
         }
     }
 
@@ -26,8 +29,11 @@ return new class extends Migration
             $table->dropColumn('deal_id');
         });
 
-        if (DB::getDriverName() !== 'sqlite') {
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
             DB::statement('ALTER TABLE activities MODIFY COLUMN lead_id BIGINT UNSIGNED NOT NULL');
+        } elseif ($driver === 'pgsql') {
+            DB::statement('ALTER TABLE activities ALTER COLUMN lead_id SET NOT NULL');
         }
     }
 };

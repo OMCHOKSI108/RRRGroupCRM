@@ -9,10 +9,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() === 'sqlite') {
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
             // SQLite columns are inherently nullable unless defined with NOT NULL in the original CREATE.
             // Since SQLite doesn't support ALTER COLUMN, and fresh SQLite schemas already have these nullable,
             // this is a no-op for SQLite (used in testing).
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            DB::statement('ALTER TABLE leads ALTER COLUMN agent_id DROP NOT NULL');
+            DB::statement('ALTER TABLE deals ALTER COLUMN agent_id DROP NOT NULL');
             return;
         }
 
@@ -25,7 +32,14 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (DB::getDriverName() === 'sqlite') {
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            DB::statement('ALTER TABLE leads ALTER COLUMN agent_id SET NOT NULL');
+            DB::statement('ALTER TABLE deals ALTER COLUMN agent_id SET NOT NULL');
             return;
         }
 

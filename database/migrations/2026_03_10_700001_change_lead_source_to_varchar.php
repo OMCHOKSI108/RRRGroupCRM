@@ -7,8 +7,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() === 'sqlite') {
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
             // SQLite treats all string columns as TEXT — no ENUM restriction exists, so this is a no-op.
+            return;
+        }
+
+        if ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE leads ALTER COLUMN lead_source TYPE VARCHAR(100)");
+            DB::statement("ALTER TABLE leads ALTER COLUMN lead_source SET DEFAULT 'other'");
             return;
         }
 
@@ -18,7 +25,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (DB::getDriverName() === 'sqlite') {
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite' || $driver === 'pgsql') {
             return;
         }
 

@@ -56,16 +56,31 @@ class InstallerService
     public function syncRuntimeDatabaseConfig(): void
     {
         $envValues = $this->loadEnvValues();
+        $connection = $envValues['DB_CONNECTION'] ?? config('database.default', 'pgsql');
 
-        config([
-            'database.connections.mysql.host' => $envValues['DB_HOST'] ?? '127.0.0.1',
-            'database.connections.mysql.port' => $envValues['DB_PORT'] ?? '3306',
-            'database.connections.mysql.database' => $envValues['DB_DATABASE'] ?? 'rrrgroupcrm',
-            'database.connections.mysql.username' => $envValues['DB_USERNAME'] ?? 'root',
-            'database.connections.mysql.password' => $envValues['DB_PASSWORD'] ?? '',
-        ]);
+        if ($connection === 'pgsql') {
+            config([
+                'database.default' => 'pgsql',
+                'database.connections.pgsql.host' => $envValues['DB_HOST'] ?? '127.0.0.1',
+                'database.connections.pgsql.port' => $envValues['DB_PORT'] ?? '5432',
+                'database.connections.pgsql.database' => $envValues['DB_DATABASE'] ?? 'rrrgroupcrm',
+                'database.connections.pgsql.username' => $envValues['DB_USERNAME'] ?? 'postgres',
+                'database.connections.pgsql.password' => $envValues['DB_PASSWORD'] ?? '',
+            ]);
 
-        DB::purge('mysql');
+            DB::purge('pgsql');
+        } else {
+            config([
+                'database.default' => 'mysql',
+                'database.connections.mysql.host' => $envValues['DB_HOST'] ?? '127.0.0.1',
+                'database.connections.mysql.port' => $envValues['DB_PORT'] ?? '3306',
+                'database.connections.mysql.database' => $envValues['DB_DATABASE'] ?? 'rrrgroupcrm',
+                'database.connections.mysql.username' => $envValues['DB_USERNAME'] ?? 'root',
+                'database.connections.mysql.password' => $envValues['DB_PASSWORD'] ?? '',
+            ]);
+
+            DB::purge('mysql');
+        }
     }
 
     public function loadEnvValues(): array

@@ -16,12 +16,15 @@ return new class extends Migration
             $table->string('timezone', 50)->nullable()->after('do_not_contact');
         });
 
-        if (DB::getDriverName() !== 'sqlite') {
+        if (DB::getDriverName() === 'mysql') {
             // Expand lead_source enum to include list_import
             DB::statement("ALTER TABLE leads MODIFY COLUMN lead_source ENUM('cold_call','direct_mail','website','referral','driving_for_dollars','list_import','other') DEFAULT 'other'");
 
             // Expand status enum to full pipeline
             DB::statement("ALTER TABLE leads MODIFY COLUMN status ENUM('new','prospecting','contacting','engaging','contacted','negotiating','offer_presented','under_contract','dispositions','assigned','closing','closed','closed_won','closed_lost','dead') DEFAULT 'new'");
+        } elseif (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE leads ALTER COLUMN lead_source TYPE VARCHAR(100)");
+            DB::statement("ALTER TABLE leads ALTER COLUMN status TYPE VARCHAR(100)");
         }
 
         // ─── Upgrade properties table ───
@@ -35,8 +38,10 @@ return new class extends Migration
         });
 
         // ─── Upgrade activities table ───
-        if (DB::getDriverName() !== 'sqlite') {
+        if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE activities MODIFY COLUMN type ENUM('call','sms','email','note','meeting','voicemail','direct_mail','stage_change') DEFAULT 'note'");
+        } elseif (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE activities ALTER COLUMN type TYPE VARCHAR(50)");
         }
 
         // ─── Upgrade deals table ───
@@ -47,8 +52,10 @@ return new class extends Migration
         });
 
         // Expand deal stage enum to full pipeline
-        if (DB::getDriverName() !== 'sqlite') {
+        if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE deals MODIFY COLUMN stage ENUM('new_lead','prospecting','contacting','engaging','contacted','offer_made','offer_presented','negotiating','under_contract','dispositions','assigned','closing','closed_won','closed_lost') DEFAULT 'new_lead'");
+        } elseif (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE deals ALTER COLUMN stage TYPE VARCHAR(50)");
         }
 
         // ─── Upgrade tenants table ───

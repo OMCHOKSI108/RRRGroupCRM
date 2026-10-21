@@ -48,7 +48,7 @@ class InstallController extends Controller
             ['name' => 'Mbstring Extension',     'passed' => extension_loaded('mbstring'),   'ext' => 'mbstring'],
             ['name' => 'OpenSSL Extension',      'passed' => extension_loaded('openssl'),    'ext' => 'openssl'],
             ['name' => 'PDO Extension',          'passed' => extension_loaded('pdo'),        'ext' => 'pdo'],
-            ['name' => 'PDO MySQL Extension',    'passed' => extension_loaded('pdo_mysql'),  'ext' => 'mysql'],
+            ['name' => 'PDO Driver (PostgreSQL / MySQL)', 'passed' => extension_loaded('pdo_pgsql') || extension_loaded('pdo_mysql'), 'ext' => 'pdo'],
             ['name' => 'Tokenizer Extension',    'passed' => extension_loaded('tokenizer'),  'ext' => 'tokenizer'],
             ['name' => 'XML Extension',          'passed' => extension_loaded('xml'),        'ext' => 'xml'],
             ['name' => 'GD Extension',           'passed' => extension_loaded('gd'),         'ext' => 'gd'],
@@ -161,97 +161,122 @@ class InstallController extends Controller
             ]);
         }
 
-        // Connect to MariaDB / MySQL server
-        try {
-            $pdo = new \PDO(
-                "mysql:host={$dbHost};port={$dbPort}",
-                $request->db_username,
-                $dbPassword
-            );
-            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        } catch (\Exception $e) {
-            return back()->withInput()->withErrors([
-                'db_host' => $this->databaseConnectionErrorMessage($e),
-            ]);
+        $dbDriver = $request->input('db_connection');
+        if (! $dbDriver) {
+            $dbDriver = ((int) $dbPort === 3306) ? 'mysql' : 'pgsql';
         }
 
-        $databaseExists = $this->databaseExists($pdo, $dbName);
-        $capabilities = $this->detectMariaDbCapabilities($pdo);
-
-        if (! $databaseExists) {
-            try {
-                $pdo->exec("CREATE DATABASE `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            } catch (\Exception $e) {
-                return back()->withInput()->withErrors([
-                    'db_database' => 'Connected to MariaDB, but this account cannot create the database "' . $dbName . '". Create the database in your hosting panel first, then continue with its existing database user.',
-                ]);
-            }
-        }
-
-        // Determine the final credentials to store in .env
         $finalUsername = $request->db_username;
         $finalPassword = $dbPassword;
         $secureUserCreated = false;
 
-        // Create a dedicated database user if requested
-        if ($request->boolean('create_secure_user') && $request->filled('secure_username') && $request->filled('secure_password')) {
-            $newUser = preg_replace('/[^a-zA-Z0-9_]/', '', $request->secure_username);
-            $newPass = $request->secure_password;
-
-            if (empty($newUser)) {
-                return back()->withInput()->withErrors(['secure_username' => 'Invalid username. Use only letters, numbers, and underscores.']);
+        if ($dbDriver === 'pgsql') {
+            try {
+                $pdo = new \PDO(
+                    "pgsql:host={$dbHost};port={$dbPort};dbname={$dbName}",
+                    $request->db_username,
+                    $dbPassword
+                );
+                $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            } catch (\Throwable $e) {
+                // Try connecting to default 'postgres' database to create the application database
+                try {
+                    $adminPdo = new \PDO(
+                        "pgsql:host={$dbHost};port={$dbPort};dbname=postgres",
+                        $request->db_username,
+                        $dbPassword
+                    );
+                    $adminPdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+                    $adminPdo->exec("CREATE DATABASE \"{$dbName}\"");
+                    $pdo = new \PDO(
+                        "pgsql:host={$dbHost};port={$dbPort};dbname={$dbName}",
+                        $request->db_username,
+                        $dbPassword
+                    );
+                } catch (\Throwable $ex) {
+                    return back()->withInput()->withErrors([
+                        'db_host' => $this->databaseConnectionErrorMessage($e),
+                    ]);
+                }
             }
-
-            if (! $capabilities['can_create_users'] || ! $capabilities['can_grant_privileges']) {
+        } else {
+            // Connect to MariaDB / MySQL server
+            try {
+                $pdo = new \PDO(
+                    "mysql:host={$dbHost};port={$dbPort}",
+                    $request->db_username,
+                    $dbPassword
+                );
+                $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            } catch (\Exception $e) {
                 return back()->withInput()->withErrors([
-                    'create_secure_user' => 'This MariaDB account can connect, but it cannot create users and grant privileges automatically. Leave "Create a dedicated database user" disabled and continue with an existing database user.',
+                    'db_host' => $this->databaseConnectionErrorMessage($e),
                 ]);
             }
 
-            try {
-                // Determine which hosts to create the user for.
-                // MySQL treats 'localhost' (socket) and '127.0.0.1' (TCP) as
-                // different hosts, so for local connections we create both to
-                // avoid access denied errors regardless of how the app connects.
-                $isLocal = in_array($dbHost, ['127.0.0.1', 'localhost', '::1']);
-                $userHosts = $isLocal ? ['localhost', '127.0.0.1'] : [$dbHost];
+            $databaseExists = $this->databaseExists($pdo, $dbName);
+            $capabilities = $this->detectMariaDbCapabilities($pdo);
 
-                foreach ($userHosts as $userHost) {
-                    // Drop user if it already exists (from a previous failed install attempt)
-                    $pdo->exec("DROP USER IF EXISTS " . $pdo->quote($newUser) . "@" . $pdo->quote($userHost));
+            if (! $databaseExists) {
+                try {
+                    $pdo->exec("CREATE DATABASE `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                } catch (\Exception $e) {
+                    return back()->withInput()->withErrors([
+                        'db_database' => 'Connected to MariaDB, but this account cannot create the database "' . $dbName . '". Create the database in your hosting panel first, then continue with its existing database user.',
+                    ]);
+                }
+            }
 
-                    // Create the user
-                    $pdo->exec(
-                        "CREATE USER " . $pdo->quote($newUser) . "@" . $pdo->quote($userHost) .
-                        " IDENTIFIED BY " . $pdo->quote($newPass)
-                    );
+            // Create a dedicated database user if requested
+            if ($request->boolean('create_secure_user') && $request->filled('secure_username') && $request->filled('secure_password')) {
+                $newUser = preg_replace('/[^a-zA-Z0-9_]/', '', $request->secure_username);
+                $newPass = $request->secure_password;
 
-                    // Grant only the privileges needed for Laravel on this database
-                    $pdo->exec(
-                        "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP, REFERENCES " .
-                        "ON `{$dbName}`.* TO " . $pdo->quote($newUser) . "@" . $pdo->quote($userHost)
-                    );
+                if (empty($newUser)) {
+                    return back()->withInput()->withErrors(['secure_username' => 'Invalid username. Use only letters, numbers, and underscores.']);
                 }
 
-                $pdo->exec("FLUSH PRIVILEGES");
+                if (! $capabilities['can_create_users'] || ! $capabilities['can_grant_privileges']) {
+                    return back()->withInput()->withErrors([
+                        'create_secure_user' => 'This MariaDB account can connect, but it cannot create users and grant privileges automatically. Leave "Create a dedicated database user" disabled and continue with an existing database user.',
+                    ]);
+                }
 
-                // Verify the new user can connect
-                $testPdo = new \PDO(
-                    "mysql:host={$dbHost};port={$dbPort};dbname={$dbName}",
-                    $newUser,
-                    $newPass
-                );
-                $testPdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-                $testPdo = null;
+                try {
+                    $isLocal = in_array($dbHost, ['127.0.0.1', 'localhost', '::1']);
+                    $userHosts = $isLocal ? ['localhost', '127.0.0.1'] : [$dbHost];
 
-                $finalUsername = $newUser;
-                $finalPassword = $newPass;
-                $secureUserCreated = true;
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Secure DB user creation failed', ['error' => $e->getMessage()]);
-                return back()->withInput()->withErrors([
-                    'secure_username' => 'Connected successfully, but this MariaDB account could not create or grant the dedicated database user. Use an existing database user instead, or supply MariaDB administrator credentials with CREATE USER and GRANT privileges.',
-                ]);
+                    foreach ($userHosts as $userHost) {
+                        $pdo->exec("DROP USER IF EXISTS " . $pdo->quote($newUser) . "@" . $pdo->quote($userHost));
+                        $pdo->exec(
+                            "CREATE USER " . $pdo->quote($newUser) . "@" . $pdo->quote($userHost) .
+                            " IDENTIFIED BY " . $pdo->quote($newPass)
+                        );
+                        $pdo->exec(
+                            "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP, REFERENCES " .
+                            "ON `{$dbName}`.* TO " . $pdo->quote($newUser) . "@" . $pdo->quote($userHost)
+                        );
+                    }
+
+                    $pdo->exec("FLUSH PRIVILEGES");
+
+                    $testPdo = new \PDO(
+                        "mysql:host={$dbHost};port={$dbPort};dbname={$dbName}",
+                        $newUser,
+                        $newPass
+                    );
+                    $testPdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+                    $testPdo = null;
+
+                    $finalUsername = $newUser;
+                    $finalPassword = $newPass;
+                    $secureUserCreated = true;
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Secure DB user creation failed', ['error' => $e->getMessage()]);
+                    return back()->withInput()->withErrors([
+                        'secure_username' => 'Connected successfully, but this MariaDB account could not create or grant the dedicated database user. Use an existing database user instead, or supply MariaDB administrator credentials with CREATE USER and GRANT privileges.',
+                    ]);
+                }
             }
         }
 
@@ -269,7 +294,7 @@ class InstallController extends Controller
             }
         };
 
-        $setEnv('DB_CONNECTION', 'mysql');
+        $setEnv('DB_CONNECTION', $dbDriver);
         $setEnv('DB_HOST', $dbHost);
         $setEnv('DB_PORT', $dbPort);
         $setEnv('DB_DATABASE', '"' . addcslashes($dbName, '"\\') . '"');
@@ -355,16 +380,28 @@ class InstallController extends Controller
                 }
             }
 
-            config([
-                'database.connections.mysql.host' => $envValues['DB_HOST'] ?? '127.0.0.1',
-                'database.connections.mysql.port' => $envValues['DB_PORT'] ?? '3306',
-                'database.connections.mysql.database' => $envValues['DB_DATABASE'] ?? 'rrrgroupcrm',
-                'database.connections.mysql.username' => $envValues['DB_USERNAME'] ?? 'root',
-                'database.connections.mysql.password' => $envValues['DB_PASSWORD'] ?? '',
-            ]);
-
-            // Purge the existing connection so it reconnects with the new credentials
-            \Illuminate\Support\Facades\DB::purge('mysql');
+            $connection = $envValues['DB_CONNECTION'] ?? config('database.default', 'pgsql');
+            if ($connection === 'pgsql') {
+                config([
+                    'database.default' => 'pgsql',
+                    'database.connections.pgsql.host' => $envValues['DB_HOST'] ?? '127.0.0.1',
+                    'database.connections.pgsql.port' => $envValues['DB_PORT'] ?? '5432',
+                    'database.connections.pgsql.database' => $envValues['DB_DATABASE'] ?? 'rrrgroupcrm',
+                    'database.connections.pgsql.username' => $envValues['DB_USERNAME'] ?? 'postgres',
+                    'database.connections.pgsql.password' => $envValues['DB_PASSWORD'] ?? '',
+                ]);
+                \Illuminate\Support\Facades\DB::purge('pgsql');
+            } else {
+                config([
+                    'database.default' => 'mysql',
+                    'database.connections.mysql.host' => $envValues['DB_HOST'] ?? '127.0.0.1',
+                    'database.connections.mysql.port' => $envValues['DB_PORT'] ?? '3306',
+                    'database.connections.mysql.database' => $envValues['DB_DATABASE'] ?? 'rrrgroupcrm',
+                    'database.connections.mysql.username' => $envValues['DB_USERNAME'] ?? 'root',
+                    'database.connections.mysql.password' => $envValues['DB_PASSWORD'] ?? '',
+                ]);
+                \Illuminate\Support\Facades\DB::purge('mysql');
+            }
 
             // Generate APP_KEY if not set
             if (
@@ -653,14 +690,14 @@ class InstallController extends Controller
                 ),
             ],
             [
-                'name' => 'MySQL PDO driver available',
-                'passed' => extension_loaded('pdo') && extension_loaded('pdo_mysql'),
+                'name' => 'Database PDO driver available',
+                'passed' => extension_loaded('pdo') && (extension_loaded('pdo_pgsql') || extension_loaded('pdo_mysql')),
                 'required' => true,
-                'detail' => extension_loaded('pdo') && extension_loaded('pdo_mysql')
-                    ? 'The installer can connect to MySQL/MariaDB.'
-                    : 'Install the pdo_mysql extension. SQLite fallback is not supported for the guided installer.',
+                'detail' => (extension_loaded('pdo_pgsql') || extension_loaded('pdo_mysql'))
+                    ? 'The installer can connect to PostgreSQL or MySQL.'
+                    : 'Install the pdo_pgsql or pdo_mysql extension.',
                 'remediation' => $this->environmentRemediation(
-                    check: 'pdo_mysql',
+                    check: 'pdo_pgsql',
                     environment: $environment,
                     envPath: $envPath,
                     examplePath: $examplePath,
@@ -706,15 +743,15 @@ class InstallController extends Controller
                 'docker' => 'Ensure the container user can write .env and bootstrap/cache. If the project is bind-mounted, fix the host-side file permissions first.',
                 default => $this->envWritableRemediation($envPath, $metadata, $webIdentity),
             },
-            'pdo_mysql' => match ($environment) {
-                'xampp' => 'Open C:\xampp\php\php.ini, enable extension=pdo_mysql, then restart Apache from the XAMPP control panel.',
-                'wamp' => 'Enable php_pdo_mysql from the WAMP tray menu, then restart all services.',
-                'debian' => 'Run: sudo apt install -y php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '-mysql && sudo systemctl restart apache2 php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '-fpm',
-                'rhel' => 'Run: sudo dnf install -y php-mysqlnd && sudo systemctl restart httpd php-fpm',
-                'docker' => 'Add pdo_mysql to your PHP image, rebuild the container, and restart it.',
-                default => 'Install the pdo_mysql extension for your PHP ' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . ' runtime, then restart PHP/Apache.',
+            'pdo_pgsql', 'pdo_mysql' => match ($environment) {
+                'xampp' => 'Open php.ini, enable extension=pdo_pgsql or extension=pdo_mysql, then restart Apache from the XAMPP control panel.',
+                'wamp' => 'Enable php_pdo_pgsql or php_pdo_mysql from the WAMP tray menu, then restart all services.',
+                'debian' => 'Run: sudo apt install -y php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '-pgsql php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '-mysql && sudo systemctl restart apache2 php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '-fpm',
+                'rhel' => 'Run: sudo dnf install -y php-pgsql php-mysqlnd && sudo systemctl restart httpd php-fpm',
+                'docker' => 'Add pdo_pgsql to your PHP image, rebuild the container, and restart it.',
+                default => 'Install the pdo_pgsql or pdo_mysql extension for your PHP ' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . ' runtime, then restart PHP/Apache.',
             },
-                'demo_data' => 'Demo data is optional. You can continue without it, or install fakerphp/faker in the environment if you want sample content.',
+            'demo_data' => 'Demo data is optional. You can continue without it, or install fakerphp/faker in the environment if you want sample content.',
             default => '',
         };
     }
@@ -905,16 +942,25 @@ class InstallController extends Controller
         $message = strtolower($e->getMessage());
 
         return match (true) {
-            str_contains($message, 'access denied') => 'MariaDB rejected the username/password. If you want the installer to create a dedicated database user automatically, supply MariaDB administrator credentials. Otherwise, use the existing database username and password assigned to your database.',
+            str_contains($message, 'password authentication failed'),
+            str_contains($message, 'access denied') => 'Database rejected the username/password. Verify the username and password assigned to your database.',
             str_contains($message, 'connection refused'),
-            str_contains($message, 'no such file or directory') => 'Could not reach the MariaDB server. Verify the host, port, and server status.',
-            default => 'Could not connect to the MariaDB server. Verify the host, port, username, and password.',
+            str_contains($message, 'could not connect'),
+            str_contains($message, 'no such file or directory') => 'Could not reach the database server. Verify the host, port, and server status.',
+            default => 'Could not connect to the database server. Verify the host, port, username, and password.',
         };
     }
 
     private function databaseExists(\PDO $pdo, string $dbName): bool
     {
         try {
+            $driver = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'pgsql') {
+                $statement = $pdo->prepare('SELECT 1 FROM pg_database WHERE datname = ?');
+                $statement->execute([$dbName]);
+                return (bool) $statement->fetchColumn();
+            }
+
             $statement = $pdo->prepare('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?');
             $statement->execute([$dbName]);
 

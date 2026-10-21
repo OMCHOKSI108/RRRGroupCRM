@@ -12,13 +12,14 @@ services:
     networks:
       - rrrgroupcrm
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - DB_HOST=mysql
-      - DB_PORT=3306
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
 
@@ -36,27 +37,25 @@ services:
     depends_on:
       - app
 
-  mysql:
-    image: mysql:8.0
-    container_name: rrrgroupcrm-mysql
+  postgres:
+    image: postgres:17-alpine
+    container_name: rrrgroupcrm-postgres
     restart: unless-stopped
     ports:
-      - "3307:3306"
+      - "5432:5432"
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-rrrgroupcrm}
-      MYSQL_USER: ${DB_USERNAME:-rrrgroupcrm}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+      POSTGRES_DB: ${DB_DATABASE:-rrrgroupcrm}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - rrrgroupcrm
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-rrrgroupcrm}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    command: --default-authentication-plugin=mysql_native_password
 
   redis:
     image: redis:alpine
@@ -79,7 +78,7 @@ networks:
     driver: bridge
 
 volumes:
-  mysql-data:
+  postgres-data:
     driver: local
   redis-data:
     driver: local

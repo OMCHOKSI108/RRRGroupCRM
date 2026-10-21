@@ -10,12 +10,18 @@ return new class extends Migration
     public function up(): void
     {
         // Convert ENUM columns to VARCHAR so pipeline stages can be tenant-configurable.
-        if (DB::getDriverName() === 'mysql') {
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
             DB::statement("ALTER TABLE deals MODIFY COLUMN stage VARCHAR(50) NOT NULL DEFAULT 'prospecting'");
             DB::statement("ALTER TABLE leads MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'new'");
             DB::statement("ALTER TABLE properties MODIFY COLUMN property_type VARCHAR(50) NOT NULL DEFAULT 'single_family'");
             DB::statement("ALTER TABLE properties MODIFY COLUMN `condition` VARCHAR(50) NULL");
-        } elseif (DB::getDriverName() === 'sqlite') {
+        } elseif ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE deals ALTER COLUMN stage TYPE VARCHAR(50), ALTER COLUMN stage SET DEFAULT 'prospecting'");
+            DB::statement("ALTER TABLE leads ALTER COLUMN status TYPE VARCHAR(50), ALTER COLUMN status SET DEFAULT 'new'");
+            DB::statement("ALTER TABLE properties ALTER COLUMN property_type TYPE VARCHAR(50), ALTER COLUMN property_type SET DEFAULT 'single_family'");
+            DB::statement('ALTER TABLE properties ALTER COLUMN "condition" TYPE VARCHAR(50)');
+        } elseif ($driver === 'sqlite') {
             // SQLite ENUM creates CHECK constraints that block new values.
             // Use Laravel's change() which recreates the table without the CHECK.
             Schema::table('deals', function (Blueprint $table) {
@@ -51,8 +57,14 @@ return new class extends Migration
 
     private function hasIndex(string $table, string $indexName): bool
     {
-        if (DB::getDriverName() === 'sqlite') {
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
             $indexes = DB::select("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=? AND name=?", [$table, $indexName]);
+            return count($indexes) > 0;
+        }
+
+        if ($driver === 'pgsql') {
+            $indexes = DB::select("SELECT indexname FROM pg_indexes WHERE tablename = ? AND indexname = ?", [$table, $indexName]);
             return count($indexes) > 0;
         }
 

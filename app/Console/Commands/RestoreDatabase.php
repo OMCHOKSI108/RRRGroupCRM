@@ -23,8 +23,9 @@ class RestoreDatabase extends Command
             return Command::FAILURE;
         }
 
-        $db = config('database.connections.mysql');
-        $database = $db['database'] ?? 'forge';
+        $connection = config('database.default', 'pgsql');
+        $db = config("database.connections.{$connection}", []);
+        $database = $db['database'] ?? 'rrrgroupcrm';
 
         if (! $this->option('force')) {
             $this->warn("This will overwrite all data in the '{$database}' database.");
@@ -49,14 +50,26 @@ class RestoreDatabase extends Command
         }
 
         try {
-            $process = new Process([
-                $this->mysqlBinary(),
-                '--host=' . ($db['host'] ?? '127.0.0.1'),
-                '--port=' . ($db['port'] ?? '3306'),
-                '--user=' . ($db['username'] ?? 'root'),
-                '--password=' . ($db['password'] ?? ''),
-                $database,
-            ]);
+            if ($connection === 'pgsql') {
+                $process = new Process([
+                    $this->pgsqlBinary(),
+                    '--host=' . ($db['host'] ?? '127.0.0.1'),
+                    '--port=' . ($db['port'] ?? '5432'),
+                    '--username=' . ($db['username'] ?? 'postgres'),
+                    '--dbname=' . $database,
+                ], null, [
+                    'PGPASSWORD' => $db['password'] ?? '',
+                ]);
+            } else {
+                $process = new Process([
+                    $this->mysqlBinary(),
+                    '--host=' . ($db['host'] ?? '127.0.0.1'),
+                    '--port=' . ($db['port'] ?? '3306'),
+                    '--user=' . ($db['username'] ?? 'root'),
+                    '--password=' . ($db['password'] ?? ''),
+                    $database,
+                ]);
+            }
 
             $process->setTimeout(600);
             $stream = fopen($importPath, 'rb');
@@ -157,5 +170,34 @@ class RestoreDatabase extends Command
         }
 
         return 'mysql';
+    }
+
+    private function pgsqlBinary(): string
+    {
+        $configured = env('PGSQL_CLIENT_BINARY');
+        if (is_string($configured) && $configured !== '' && file_exists($configured)) {
+            return $configured;
+        }
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $candidates = [
+                'C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe',
+                'C:\\Program Files\\PostgreSQL\\16\\bin\\psql.exe',
+            ];
+
+            foreach ($candidates as $candidate) {
+                if (file_exists($candidate)) {
+                    return $candidate;
+                }
+            }
+
+            return 'psql.exe';
+        }
+
+        if (file_exists('/usr/bin/psql')) {
+            return '/usr/bin/psql';
+        }
+
+        return 'psql';
     }
 }

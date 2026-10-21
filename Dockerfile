@@ -15,11 +15,16 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libzip-dev \
     libicu-dev \
+    libpq-dev \
+    postgresql-client \
+    default-mysql-client \
     zip \
     unzip \
     supervisor \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
+        pdo_pgsql \
+        pgsql \
         pdo_mysql \
         mbstring \
         exif \

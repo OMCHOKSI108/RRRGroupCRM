@@ -63,18 +63,18 @@
                 </div>
                 <div class="col-4">
                     <label class="form-label">{{ __('Port') }}</label>
-                    <input type="text" name="db_port" class="form-control" value="{{ old('db_port', '3306') }}" required>
+                    <input type="text" name="db_port" class="form-control" value="{{ old('db_port', '5432') }}" required>
                 </div>
             </div>
             <div class="mb-3">
                 <label class="form-label">{{ __('Database Name') }}</label>
                 <input type="text" name="db_database" id="db_database" class="form-control" value="{{ old('db_database', 'rrrgroupcrm') }}" required>
-                <small class="form-hint">{{ __('Use the database already created for this app, or enter a new name if your MariaDB account can create databases.') }}</small>
+                <small class="form-hint">{{ __('Use the database already created for this app, or enter a new name.') }}</small>
             </div>
             <div class="mb-3">
                 <label class="form-label">{{ __('Database Username') }}</label>
-                <input type="text" name="db_username" id="db_username" class="form-control" value="{{ old('db_username', 'root') }}" required>
-                <small class="form-hint">{{ __('For most installs, this is the existing database user created in your hosting panel.') }}</small>
+                <input type="text" name="db_username" id="db_username" class="form-control" value="{{ old('db_username', 'postgres') }}" required>
+                <small class="form-hint">{{ __('Database user account.') }}</small>
             </div>
             <div class="mb-3">
                 <label class="form-label">{{ __('Database Password') }}</label>
