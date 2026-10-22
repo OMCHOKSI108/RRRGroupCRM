@@ -58,6 +58,7 @@ use App\Http\Controllers\ComparableSaleController;
 use App\Http\Controllers\ActivityInboxController;
 use App\Http\Controllers\SavedViewController;
 use App\Http\Controllers\DispositionRoomController;
+use App\Http\Controllers\ClientMapController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to dashboard or login
@@ -420,6 +421,12 @@ Route::middleware(['auth', 'tenant', 'require2fa'])->group(function () {
         Route::get('/reports/export/funnel', [ReportController::class, 'exportFunnel'])->name('reports.exportFunnel');
         Route::get('/reports/export/team-performance', [ReportController::class, 'exportTeamPerformance'])->name('reports.exportTeamPerformance');
         Route::get('/reports/export/list-stacking', [ReportController::class, 'exportListStacking'])->name('reports.exportListStacking');
+    });
+
+    // ── Admin Client Cluster Map: admin ─────────────────
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/client-map', [ClientMapController::class, 'index'])->name('admin.client-map.index');
+        Route::get('/api/v1/admin/analytics/client-map/clusters', [ClientMapController::class, 'clusters'])->name('admin.analytics.client-map.clusters');
     });
 
     // ── Settings / Plugins / DNC: admin ─────

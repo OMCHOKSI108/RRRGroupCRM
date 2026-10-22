@@ -64,9 +64,14 @@ class DashboardController extends Controller
         // Pipeline Bottleneck (admin only)
         $pipelineBottleneck = collect();
         if ($user->isAdmin()) {
-            $avgDaysExpr = DB::getDriverName() === 'sqlite'
-                ? DB::raw("avg(julianday('now') - julianday(created_at)) as avg_days")
-                : DB::raw('avg(DATEDIFF(NOW(), created_at)) as avg_days');
+            $driver = DB::getDriverName();
+            if ($driver === 'sqlite') {
+                $avgDaysExpr = DB::raw("avg(julianday('now') - julianday(created_at)) as avg_days");
+            } elseif ($driver === 'pgsql') {
+                $avgDaysExpr = DB::raw("avg(EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400) as avg_days");
+            } else {
+                $avgDaysExpr = DB::raw('avg(DATEDIFF(NOW(), created_at)) as avg_days');
+            }
             $pipelineBottleneck = Deal::whereNotIn('stage', ['closed_won', 'closed_lost'])
                 ->select('stage', DB::raw('count(*) as deal_count'), $avgDaysExpr)
                 ->groupBy('stage')

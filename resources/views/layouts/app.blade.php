@@ -237,7 +237,7 @@
                         </li>
 
                         {{-- ── INSIGHTS ────────────────────────────── --}}
-                        @php $insightsActive = request()->is('reports*') || request()->is('audit-log*') || request()->is('ai-history*'); @endphp
+                        @php $insightsActive = request()->is('reports*') || request()->is('audit-log*') || request()->is('ai-history*') || request()->is('admin/client-map*'); @endphp
                         <li class="nav-item dropdown {{ $insightsActive ? 'active' : '' }}">
                             <a class="nav-link dropdown-toggle" href="#sidebar-insights" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ $insightsActive ? 'true' : 'false' }}">
                                 <span class="nav-link-icon">
@@ -246,7 +246,7 @@
                                 <span class="nav-link-title">{{ __('Insights') }}</span>
                             </a>
                             <div class="dropdown-menu {{ $insightsActive ? 'show' : '' }}">
-
+                                <a class="dropdown-item {{ request()->is('admin/client-map*') ? 'active' : '' }}" href="{{ route('admin.client-map.index') }}">{{ __('Client Map') }}</a>
                                 <a class="dropdown-item {{ request()->is('reports*') ? 'active' : '' }}" href="{{ route('reports.index') }}">{{ __('Reports') }}</a>
                                 <a class="dropdown-item {{ request()->is('audit-log*') ? 'active' : '' }}" href="{{ route('audit-log.index') }}">{{ __('Audit Log') }}</a>
                                 <a class="dropdown-item {{ request()->is('ai-history*') ? 'active' : '' }}" href="{{ route('ai-log.index') }}">{{ __('AI History') }}</a>

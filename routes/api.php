@@ -51,4 +51,7 @@ Route::prefix('v1')->middleware(['api.key', 'throttle:api', 'api.log'])->group(f
 
     // Stats / KPIs
     Route::get('/stats', [StatsApiController::class, 'index']);
+
+    // Admin Analytics / Client Clusters
+    Route::get('/admin/analytics/client-map/clusters', [\App\Http\Controllers\ClientMapController::class, 'clusters']);
 });

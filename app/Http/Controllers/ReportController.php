@@ -58,9 +58,14 @@ class ReportController extends Controller
             : collect();
 
         // Pipeline bottleneck: avg days per stage
-        $avgDaysExpr = DB::getDriverName() === 'sqlite'
-            ? DB::raw("avg(julianday('now') - julianday(created_at)) as avg_days")
-            : DB::raw('avg(DATEDIFF(NOW(), created_at)) as avg_days');
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
+            $avgDaysExpr = DB::raw("avg(julianday('now') - julianday(created_at)) as avg_days");
+        } elseif ($driver === 'pgsql') {
+            $avgDaysExpr = DB::raw("avg(EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400) as avg_days");
+        } else {
+            $avgDaysExpr = DB::raw('avg(DATEDIFF(NOW(), created_at)) as avg_days');
+        }
         $pipelineBottleneck = Deal::whereNotIn('stage', ['closed_won', 'closed_lost'])
             ->select('stage', DB::raw('count(*) as deal_count'), $avgDaysExpr)
             ->groupBy('stage')
@@ -192,11 +197,17 @@ class ReportController extends Controller
         $velocityData = Deal::where('stage', 'closed_won')
             ->whereBetween('deals.created_at', [$from, $to . ' 23:59:59'])
             ->join('leads', 'deals.lead_id', '=', 'leads.id')
-            ->when(DB::getDriverName() === 'sqlite', function ($q) {
+            ->when($driver === 'sqlite', function ($q) {
                 $q->selectRaw('AVG(julianday(deals.stage_changed_at) - julianday(leads.created_at)) as avg_days')
                   ->selectRaw('MIN(julianday(deals.stage_changed_at) - julianday(leads.created_at)) as min_days')
                   ->selectRaw('MAX(julianday(deals.stage_changed_at) - julianday(leads.created_at)) as max_days');
-            }, function ($q) {
+            })
+            ->when($driver === 'pgsql', function ($q) {
+                $q->selectRaw('AVG(EXTRACT(EPOCH FROM (deals.stage_changed_at - leads.created_at)) / 86400) as avg_days')
+                  ->selectRaw('MIN(EXTRACT(EPOCH FROM (deals.stage_changed_at - leads.created_at)) / 86400) as min_days')
+                  ->selectRaw('MAX(EXTRACT(EPOCH FROM (deals.stage_changed_at - leads.created_at)) / 86400) as max_days');
+            })
+            ->when($driver !== 'sqlite' && $driver !== 'pgsql', function ($q) {
                 $q->selectRaw('AVG(DATEDIFF(deals.stage_changed_at, leads.created_at)) as avg_days')
                   ->selectRaw('MIN(DATEDIFF(deals.stage_changed_at, leads.created_at)) as min_days')
                   ->selectRaw('MAX(DATEDIFF(deals.stage_changed_at, leads.created_at)) as max_days');

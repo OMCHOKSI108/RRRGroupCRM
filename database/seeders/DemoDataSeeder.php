@@ -132,12 +132,12 @@ class DemoDataSeeder extends Seeder
         $allLeads = [];
 
         $monthCohorts = [
-            ['start' => '2025-10-01', 'end' => '2025-10-31', 'count' => 20],
-            ['start' => '2025-11-01', 'end' => '2025-11-30', 'count' => 25],
-            ['start' => '2025-12-01', 'end' => '2025-12-31', 'count' => 30],
-            ['start' => '2026-01-01', 'end' => '2026-01-31', 'count' => 35],
-            ['start' => '2026-02-01', 'end' => '2026-02-28', 'count' => 40],
-            ['start' => '2026-03-01', 'end' => '2026-03-12', 'count' => 50],
+            ['start' => now()->subMonths(5)->startOfMonth(), 'end' => now()->subMonths(5)->endOfMonth(), 'count' => 35],
+            ['start' => now()->subMonths(4)->startOfMonth(), 'end' => now()->subMonths(4)->endOfMonth(), 'count' => 45],
+            ['start' => now()->subMonths(3)->startOfMonth(), 'end' => now()->subMonths(3)->endOfMonth(), 'count' => 55],
+            ['start' => now()->subMonths(2)->startOfMonth(), 'end' => now()->subMonths(2)->endOfMonth(), 'count' => 65],
+            ['start' => now()->subMonth()->startOfMonth(),    'end' => now()->subMonth()->endOfMonth(),    'count' => 80],
+            ['start' => now()->startOfMonth(),               'end' => now(),                             'count' => 100],
         ];
 
         foreach ($monthCohorts as $cohort) {
@@ -376,9 +376,10 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        // ── Create 50 deals from the first 50 leads ──
+        // ── Create 100 deals from the leads ──
         $dealStages = array_keys(\App\Services\BusinessModeService::getStages($tenant));
-        for ($i = 0; $i < 50; $i++) {
+        $dealCount = min(100, count($allLeads));
+        for ($i = 0; $i < $dealCount; $i++) {
             $lead = $allLeads[$i];
             $dealCreated = $faker->dateTimeBetween(
                 Carbon::parse($lead->created_at)->addDays(rand(1, 10)),
@@ -386,11 +387,20 @@ class DemoDataSeeder extends Seeder
             );
             $stageChanged = $faker->dateTimeBetween($dealCreated, min(Carbon::parse($dealCreated)->addDays(30), now()));
 
+            // Ensure recent deals include closed_won this month so dashboard KPIs show active monthly revenue
+            if ($i >= $dealCount - 8) {
+                $stage = 'closed_won';
+                $dealCreated = $faker->dateTimeBetween(now()->startOfMonth(), now());
+                $stageChanged = $faker->dateTimeBetween($dealCreated, now());
+            } else {
+                $stage = $faker->randomElement($dealStages);
+            }
+
             $dealData = [
                 'tenant_id' => $tenantId,
                 'lead_id' => $lead->id,
                 'agent_id' => $lead->agent_id,
-                'stage' => $faker->randomElement($dealStages),
+                'stage' => $stage,
                 'created_at' => $dealCreated,
                 'updated_at' => $stageChanged,
                 'stage_changed_at' => $stageChanged,
@@ -412,13 +422,13 @@ class DemoDataSeeder extends Seeder
             Deal::factory()->create($dealData);
         }
 
-        // ── Create 20 buyers with verification & transaction data ──
+        // ── Create 35 buyers with verification & transaction data ──
         $streetNames = ['Oak', 'Elm', 'Pine', 'Maple', 'Cedar', 'Birch', 'Walnut', 'Peach', 'Cherry', 'Magnolia'];
         $streetTypes = ['St', 'Ave', 'Blvd', 'Dr', 'Ln', 'Ct', 'Way', 'Pl'];
         $cities = ['Dallas, TX', 'Houston, TX', 'Austin, TX', 'Fort Worth, TX', 'Tampa, FL', 'Orlando, FL', 'Phoenix, AZ', 'Atlanta, GA'];
 
-        for ($i = 0; $i < 20; $i++) {
-            $buyerCreated = $faker->dateTimeBetween('2025-10-01', '2026-03-12');
+        for ($i = 0; $i < 35; $i++) {
+            $buyerCreated = $faker->dateTimeBetween(now()->subMonths(6), now());
             $buyer = Buyer::factory()->create([
                 'tenant_id' => $tenantId,
                 'created_at' => $buyerCreated,
@@ -458,22 +468,23 @@ class DemoDataSeeder extends Seeder
         // ── Create lists and link leads (wholesale: distress lists, real estate: source lists) ──
         if ($isRealEstate) {
             $listTypes = [
-                ['name' => 'Open House Attendees',   'type' => 'open_house',    'imported' => '2025-10-15'],
-                ['name' => 'Website Inquiries',      'type' => 'website',       'imported' => '2025-11-08'],
-                ['name' => 'Past Client Referrals',  'type' => 'referral',      'imported' => '2025-12-20'],
-                ['name' => 'Zillow Leads',           'type' => 'zillow',        'imported' => '2026-01-25'],
-                ['name' => 'Sphere of Influence',    'type' => 'sphere',        'imported' => '2026-02-18'],
+                ['name' => 'Open House Attendees',   'type' => 'open_house',    'imported' => now()->subMonths(5)->toDateString()],
+                ['name' => 'Website Inquiries',      'type' => 'website',       'imported' => now()->subMonths(4)->toDateString()],
+                ['name' => 'Past Client Referrals',  'type' => 'referral',      'imported' => now()->subMonths(3)->toDateString()],
+                ['name' => 'Zillow Leads',           'type' => 'zillow',        'imported' => now()->subMonths(2)->toDateString()],
+                ['name' => 'Sphere of Influence',    'type' => 'sphere',        'imported' => now()->subMonth()->toDateString()],
             ];
         } else {
             $listTypes = [
-                ['name' => 'Tax Delinquent List',   'type' => 'tax_delinquent',  'imported' => '2025-10-15'],
-                ['name' => 'Probate List',           'type' => 'probate',         'imported' => '2025-11-08'],
-                ['name' => 'Code Violation List',    'type' => 'code_violation',  'imported' => '2025-12-20'],
-                ['name' => 'Pre-Foreclosure List',   'type' => 'pre_foreclosure', 'imported' => '2026-01-25'],
-                ['name' => 'Absentee Owner List',    'type' => 'absentee_owner',  'imported' => '2026-02-18'],
+                ['name' => 'Tax Delinquent List',   'type' => 'tax_delinquent',  'imported' => now()->subMonths(5)->toDateString()],
+                ['name' => 'Probate List',           'type' => 'probate',         'imported' => now()->subMonths(4)->toDateString()],
+                ['name' => 'Code Violation List',    'type' => 'code_violation',  'imported' => now()->subMonths(3)->toDateString()],
+                ['name' => 'Pre-Foreclosure List',   'type' => 'pre_foreclosure', 'imported' => now()->subMonths(2)->toDateString()],
+                ['name' => 'Absentee Owner List',    'type' => 'absentee_owner',  'imported' => now()->subMonth()->toDateString()],
             ];
         }
 
+        $chunkSize = (int) floor(count($allLeads) / count($listTypes));
         foreach ($listTypes as $index => $listType) {
             $list = LeadList::create([
                 'tenant_id' => $tenantId,
@@ -483,8 +494,8 @@ class DemoDataSeeder extends Seeder
                 'imported_at' => Carbon::parse($listType['imported']),
             ]);
 
-            $start = $index * 40;
-            $listLeads = array_slice($allLeads, $start, 40);
+            $start = $index * $chunkSize;
+            $listLeads = array_slice($allLeads, $start, $chunkSize);
             $leadIds = array_map(fn ($lead) => $lead->id, $listLeads);
             $list->leads()->attach(array_fill_keys($leadIds, ['tenant_id' => $tenantId]));
             $list->update(['record_count' => count($leadIds)]);
@@ -495,8 +506,8 @@ class DemoDataSeeder extends Seeder
             'tenant_id' => $tenantId,
             'name' => 'New Lead Follow-Up',
             'is_active' => true,
-            'created_at' => '2025-11-01',
-            'updated_at' => '2025-11-01',
+            'created_at' => now()->subMonths(5),
+            'updated_at' => now()->subMonths(5),
         ]);
 
         if ($isRealEstate) {
@@ -798,7 +809,7 @@ class DemoDataSeeder extends Seeder
                 'author' => 'CRM Team',
                 'description' => 'A sample plugin demonstrating the plugin API.',
                 'is_active' => true,
-                'installed_at' => '2025-10-20',
+                'installed_at' => now()->subMonths(6)->toDateString(),
             ]
         );
     }

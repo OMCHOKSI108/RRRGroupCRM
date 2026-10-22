@@ -27,6 +27,8 @@ class Lead extends Model
         'ai_motivation_score',
         'do_not_contact',
         'timezone',
+        'latitude',
+        'longitude',
         'notes',
         'custom_fields',
     ];
@@ -37,6 +39,8 @@ class Lead extends Model
             'do_not_contact' => 'boolean',
             'motivation_score' => 'integer',
             'ai_motivation_score' => 'integer',
+            'latitude' => 'float',
+            'longitude' => 'float',
             'custom_fields' => 'array',
         ];
     }

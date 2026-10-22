@@ -71,9 +71,11 @@ class PdfExportController extends Controller
                 DB::raw('count(*) as deal_count'),
                 DB::raw('sum(contract_price) as total_value'),
                 DB::raw("sum({$feeColumn}) as total_fees"),
-                DB::getDriverName() === 'sqlite'
-                    ? DB::raw("avg(julianday('now') - julianday(stage_changed_at)) as avg_days_in_stage")
-                    : DB::raw('avg(DATEDIFF(NOW(), stage_changed_at)) as avg_days_in_stage')
+                match (DB::getDriverName()) {
+                    'sqlite' => DB::raw("avg(julianday('now') - julianday(stage_changed_at)) as avg_days_in_stage"),
+                    'pgsql' => DB::raw("avg(EXTRACT(EPOCH FROM (NOW() - stage_changed_at)) / 86400) as avg_days_in_stage"),
+                    default => DB::raw('avg(DATEDIFF(NOW(), stage_changed_at)) as avg_days_in_stage'),
+                }
             )
             ->groupBy('stage')
             ->get()

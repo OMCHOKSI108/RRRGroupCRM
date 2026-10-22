@@ -17,6 +17,10 @@ return new class extends Migration
             DB::statement("ALTER TABLE properties MODIFY COLUMN property_type VARCHAR(50) NOT NULL DEFAULT 'single_family'");
             DB::statement("ALTER TABLE properties MODIFY COLUMN `condition` VARCHAR(50) NULL");
         } elseif ($driver === 'pgsql') {
+            DB::statement("ALTER TABLE deals DROP CONSTRAINT IF EXISTS deals_stage_check");
+            DB::statement("ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_status_check");
+            DB::statement("ALTER TABLE properties DROP CONSTRAINT IF EXISTS properties_property_type_check");
+            DB::statement("ALTER TABLE properties DROP CONSTRAINT IF EXISTS properties_condition_check");
             DB::statement("ALTER TABLE deals ALTER COLUMN stage TYPE VARCHAR(50), ALTER COLUMN stage SET DEFAULT 'prospecting'");
             DB::statement("ALTER TABLE leads ALTER COLUMN status TYPE VARCHAR(50), ALTER COLUMN status SET DEFAULT 'new'");
             DB::statement("ALTER TABLE properties ALTER COLUMN property_type TYPE VARCHAR(50), ALTER COLUMN property_type SET DEFAULT 'single_family'");
