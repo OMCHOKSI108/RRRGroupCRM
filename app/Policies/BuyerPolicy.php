@@ -14,7 +14,7 @@ class BuyerPolicy
 
     public function view(User $user, Buyer $buyer): bool
     {
-        return $user->canManageBuyers();
+        return $buyer->tenant_id === $user->tenant_id && $user->canManageBuyers();
     }
 
     public function create(User $user): bool
@@ -24,12 +24,12 @@ class BuyerPolicy
 
     public function update(User $user, Buyer $buyer): bool
     {
-        return $user->canManageBuyers();
+        return $buyer->tenant_id === $user->tenant_id && $user->canManageBuyers();
     }
 
     public function delete(User $user, Buyer $buyer): bool
     {
-        return $user->canManageBuyers();
+        return $buyer->tenant_id === $user->tenant_id && $user->canManageBuyers();
     }
 
     public function bulkDelete(User $user): bool

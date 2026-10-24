@@ -34,6 +34,10 @@ class OpenHousePolicy
 
     private function ownsOrCanManage(User $user, OpenHouse $openHouse): bool
     {
+        if ($openHouse->tenant_id !== $user->tenant_id) {
+            return false;
+        }
+
         if ($user->isAdmin()) {
             return true;
         }

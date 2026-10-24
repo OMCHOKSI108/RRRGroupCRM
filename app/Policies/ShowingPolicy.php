@@ -34,6 +34,10 @@ class ShowingPolicy
 
     private function ownsOrCanManage(User $user, Showing $showing): bool
     {
+        if ($showing->tenant_id !== $user->tenant_id) {
+            return false;
+        }
+
         if ($user->isAdmin()) {
             return true;
         }

@@ -14,6 +14,10 @@ class PropertyPolicy
 
     public function view(User $user, Property $property): bool
     {
+        if ($property->tenant_id !== $user->tenant_id) {
+            return false;
+        }
+
         if (! $this->viewAny($user)) {
             return false;
         }
