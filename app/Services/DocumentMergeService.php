@@ -49,7 +49,7 @@ class DocumentMergeService
         $buyerMatch = $deal->buyerMatches()->with('buyer')->orderByDesc('match_score')->first();
         $buyer = $buyerMatch?->buyer;
 
-        $tenant = $deal->tenant ?? auth()->user()->tenant;
+        $tenant = $deal->tenant ?? auth()->user()?->tenant;
         $lead = $deal->lead;
         $property = $lead?->property;
 
@@ -72,7 +72,7 @@ class DocumentMergeService
 
         // Deal fields (shared)
         $data['deal.title'] = $deal->title ?? '';
-        $data['deal.stage'] = Deal::stageLabel($deal->stage);
+        $data['deal.stage'] = $deal->stage ? Deal::stageLabel($deal->stage, $tenant) : '';
         $data['deal.contract_price'] = $this->formatCurrency($deal->contract_price);
         $data['deal.earnest_money'] = $this->formatCurrency($deal->earnest_money);
         $data['deal.estimated_close_date'] = $this->formatDate($deal->closing_date);
@@ -106,23 +106,23 @@ class DocumentMergeService
         $data['property.property_type'] = $property ? __(ucwords(str_replace('_', ' ', $property->property_type ?? ''))) : '';
         $data['property.bedrooms'] = (string) ($property->bedrooms ?? '');
         $data['property.bathrooms'] = (string) ($property->bathrooms ?? '');
-        $data['property.square_footage'] = $property->square_footage ? number_format($property->square_footage) : '';
+        $data['property.square_footage'] = $property?->square_footage ? number_format($property->square_footage) : '';
         $data['property.year_built'] = (string) ($property->year_built ?? '');
-        $data['property.lot_size'] = $property->lot_size ? Fmt::area($property->lot_size) : '';
-        $data['property.estimated_value'] = $this->formatCurrency($property->estimated_value ?? null);
+        $data['property.lot_size'] = $property?->lot_size ? Fmt::area($property->lot_size) : '';
+        $data['property.estimated_value'] = $this->formatCurrency($property?->estimated_value ?? null);
 
         // Property fields (RE)
-        $data['property.list_price'] = $this->formatCurrency($property->list_price ?? null);
+        $data['property.list_price'] = $this->formatCurrency($property?->list_price ?? null);
         $data['property.listing_status'] = $property ? __(ucwords(str_replace('_', ' ', $property->listing_status ?? ''))) : '';
-        $data['property.listed_at'] = $this->formatDate($property->listed_at ?? null);
-        $data['property.sold_at'] = $this->formatDate($property->sold_at ?? null);
-        $data['property.sold_price'] = $this->formatCurrency($property->sold_price ?? null);
+        $data['property.listed_at'] = $this->formatDate($property?->listed_at ?? null);
+        $data['property.sold_at'] = $this->formatDate($property?->sold_at ?? null);
+        $data['property.sold_price'] = $this->formatCurrency($property?->sold_price ?? null);
         $data['property.mls_number'] = $property->mls_number ?? '';
 
         // Property fields (wholesale)
-        $data['property.after_repair_value'] = $this->formatCurrency($property->after_repair_value ?? null);
-        $data['property.repair_estimate'] = $this->formatCurrency($property->repair_estimate ?? null);
-        $data['property.our_offer'] = $this->formatCurrency($property->our_offer ?? null);
+        $data['property.after_repair_value'] = $this->formatCurrency($property?->after_repair_value ?? null);
+        $data['property.repair_estimate'] = $this->formatCurrency($property?->repair_estimate ?? null);
+        $data['property.our_offer'] = $this->formatCurrency($property?->our_offer ?? null);
         $data['property.distress_markers'] = $property && $property->distress_markers
             ? implode(', ', array_map(fn($m) => __(ucwords(str_replace('_', ' ', $m))), $property->distress_markers))
             : '';

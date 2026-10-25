@@ -70,7 +70,7 @@ class User extends Authenticatable
 
     public function hasRole(string $roleName): bool
     {
-        return $this->role->name === $roleName;
+        return $this->role?->name === $roleName;
     }
 
     /**

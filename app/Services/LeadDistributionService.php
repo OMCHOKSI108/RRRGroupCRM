@@ -32,8 +32,13 @@ class LeadDistributionService
      */
     protected function roundRobin(Lead $lead, Tenant $tenant): ?User
     {
+        $leadHandlingRoles = BusinessModeService::isRealEstate($tenant)
+            ? ['admin', 'agent', 'listing_agent', 'buyers_agent']
+            : ['admin', 'agent', 'acquisition_agent'];
+
         $agents = $tenant->users()
             ->where('is_active', true)
+            ->whereHas('role', fn($q) => $q->whereIn('name', $leadHandlingRoles))
             ->orderBy('id')
             ->get();
 
@@ -89,9 +94,13 @@ class LeadDistributionService
      */
     protected function aiSmart(Lead $lead, Tenant $tenant): ?User
     {
+        $leadHandlingRoles = BusinessModeService::isRealEstate($tenant)
+            ? ['admin', 'agent', 'listing_agent', 'buyers_agent']
+            : ['admin', 'agent', 'acquisition_agent'];
+
         $agents = $tenant->users()
             ->where('is_active', true)
-            ->whereHas('role', fn($q) => $q->whereIn('name', ['admin', 'agent', 'acquisition_agent']))
+            ->whereHas('role', fn($q) => $q->whereIn('name', $leadHandlingRoles))
             ->get();
 
         if ($agents->isEmpty()) {

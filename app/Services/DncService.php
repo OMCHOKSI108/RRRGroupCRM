@@ -17,6 +17,10 @@ class DncService
             return true;
         }
 
+        if (empty($lead->phone) && empty($lead->email)) {
+            return false;
+        }
+
         return DoNotContact::where('tenant_id', $lead->tenant_id)
             ->where(function ($query) use ($lead) {
                 if ($lead->phone) {

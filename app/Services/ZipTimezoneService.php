@@ -289,11 +289,16 @@ class ZipTimezoneService
      */
     public static function detect(?string $zipCode): ?string
     {
-        if (!$zipCode || strlen($zipCode) < 3) {
+        if ($zipCode === null) {
             return null;
         }
 
-        $prefix = substr($zipCode, 0, 3);
+        $cleanZip = trim($zipCode);
+        if (strlen($cleanZip) < 3) {
+            return null;
+        }
+
+        $prefix = substr($cleanZip, 0, 3);
         return self::$zipTimezoneMap[$prefix] ?? null;
     }
 }
