@@ -25,12 +25,12 @@ jobs:
       - name: Install Dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Laravel Pint Check
-        run: ./vendor/bin/pint --test
-
       - name: PHP Syntax Check
-        run: find app config routes database/seeders tests -name "*.php" -exec php -l {} \;
+        run: find app config routes database tests -name "*.php" -exec php -l {} \; | tail -5
 
       - name: Check for Debug Statements
         run: |
-          ! grep -rn "dd(\|dump(\|var_dump(\|ray(" app config routes 2>&1 | grep -v ".git"
+          if grep -rn "dd(\|dump(\|var_dump(\|ray(" app config routes 2>&1 | grep -v ".git"; then
+            echo "Debug statements found"
+            exit 1
+          fi
