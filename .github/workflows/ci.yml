@@ -41,9 +41,6 @@ jobs:
       - name: Install Dependencies
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Check for Syntax Errors
-        run: find app config routes database tests -name "*.php" -not -path "*/migrations/*" -exec php -l {} \; | grep -v "No syntax errors"
-
       - name: Dependency Security Audit
         run: composer audit --format=table
         continue-on-error: true
