@@ -1,0 +1,36 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-check:
+    name: Lint, Format & Static Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_sqlite, bcmath, intl, zip
+          coverage: none
+
+      - name: Install Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Laravel Pint Check
+        run: ./vendor/bin/pint --test
+
+      - name: PHP Syntax Check
+        run: find app config routes database/seeders tests -name "*.php" -exec php -l {} \;
+
+      - name: Check for Debug Statements
+        run: |
+          ! grep -rn "dd(\|dump(\|var_dump(\|ray(" app config routes 2>&1 | grep -v ".git"

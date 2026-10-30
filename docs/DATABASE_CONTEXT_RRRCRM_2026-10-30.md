@@ -1,6 +1,6 @@
-# InsulaCRM Database Context
+# RRRCRM Database Context
 
-> Comprehensive database schema, relationships, constraints, and context for AI agents. This file is meant to be used as persistent context for understanding and working with the InsulaCRM database.
+> Comprehensive database schema, relationships, constraints, and context for AI agents. This file is meant to be used as persistent context for understanding and working with the RRRCRM database.
 
 **Database Type:** PostgreSQL (DB_CONNECTION=pgsql)  
 **Framework:** Laravel 12 with Eloquent ORM  
@@ -21,7 +21,7 @@
 
 ## Overview
 
-InsulaCRM (RRRGroupCRM) is a multi-tenant real estate CRM supporting two business modes:
+RRRCRM (RRRGroupCRM) is a multi-tenant real estate CRM supporting two business modes:
 - **Wholesaling** (default): Focus on acquiring distressed properties, assigning contracts to buyers
 - **Real Estate Agent/Broker**: Focus on listings, showings, open houses, commissions
 

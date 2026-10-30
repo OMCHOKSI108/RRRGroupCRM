@@ -1,4 +1,4 @@
-# InsulaCRM - Functionality Overview
+# RRRCRM - Functionality Overview
 
 > **For Real Estate Wholesalers, Investors & Agents**  
 > A complete, self-hosted CRM built to solve the exact problems real estate firms face every day.
@@ -13,7 +13,7 @@
 
 Running a real estate wholesaling or brokerage business means juggling motivated seller leads, property analysis, deal pipelines, buyers, follow-ups, and team coordination - all while trying to close deals profitably. Most CRMs are either too generic (Salesforce, HubSpot) or too expensive and bloated for real estate operations.
 
-**InsulaCRM solves this by giving you a purpose-built system that actually understands how real estate deals work.**
+**RRRCRM solves this by giving you a purpose-built system that actually understands how real estate deals work.**
 
 ---
 
@@ -135,7 +135,7 @@ Running a real estate wholesaling or brokerage business means juggling motivated
 
 ---
 
-## Why Real Estate Firms Choose InsulaCRM
+## Why Real Estate Firms Choose RRRCRM
 
 ### For Wholesaling Companies
 - **Speed to close**: Find motivated sellers, analyze deals, and assign to buyers faster than ever
@@ -184,4 +184,4 @@ Running a real estate wholesaling or brokerage business means juggling motivated
 
 ---
 
-**In short:** InsulaCRM is the operating system for your real estate business. It takes everything from lead capture to deal closing and puts it in one place, so you can focus on what actually makes money - finding deals and closing them.
+**In short:** RRRCRM is the operating system for your real estate business. It takes everything from lead capture to deal closing and puts it in one place, so you can focus on what actually makes money - finding deals and closing them.
