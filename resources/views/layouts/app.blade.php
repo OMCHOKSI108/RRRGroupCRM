@@ -7,6 +7,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __('Dashboard')) - {{ config('app.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler-vendors.min.css">
     <style>
@@ -33,6 +36,7 @@
     <link rel="stylesheet" href="{{ asset('css/mobile.css') }}">
     @include('layouts._pwa')
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('build/assets/app.css') }}">
     <script>
     // Render AI markdown to HTML — shared across all AI output areas
     window.renderAiMarkdown = function(text) {

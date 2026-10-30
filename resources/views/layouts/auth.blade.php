@@ -6,8 +6,12 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title>@yield('title', __('Login')) - {{ config('app.name') }}</title>
     <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
     @stack('styles')
+    <link rel="stylesheet" href="{{ asset('build/assets/app.css') }}">
 </head>
 <body class="d-flex flex-column">
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js" defer></script>
