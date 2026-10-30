@@ -39,11 +39,23 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install Dependencies
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Validate Composer
+        run: composer validate --strict --no-check-all
+
+      - name: Check for Syntax Errors
+        run: find app config routes database tests -name "*.php" -not -path "*/migrations/*" -exec php -l {} \; | grep -v "No syntax errors"
 
       - name: Dependency Security Audit
         run: composer audit --format=table
         continue-on-error: true
+
+      - name: Copy .env for testing
+        run: cp .env.example .env || true
+
+      - name: Generate Application Key
+        run: php artisan key:generate --force
 
       - name: Execute Feature & Unit Tests
         env:
@@ -51,4 +63,4 @@ jobs:
           DB_DATABASE: ":memory:"
           APP_ENV: testing
           APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-        run: php artisan test
+        run: php artisan test --stop-on-failure
